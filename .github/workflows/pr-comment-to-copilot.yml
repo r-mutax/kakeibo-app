@@ -1,0 +1,40 @@
+name: Ask Copilot to Apply Review Feedback
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  ask:
+    if: >
+      github.event.issue.pull_request != null &&
+      contains(github.event.comment.body, '/copilot-fix')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Relay reviewer feedback to Copilot
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.issue.number;
+            const reviewerComment = context.payload.comment.body.replace('/copilot-fix', '').trim() || '(no details)';
+            const body = [
+              `@github Please update this pull request according to the reviewer feedback below.`,
+              ``,
+              `Reviewer feedback:`,
+              '```',
+              reviewerComment,
+              '```',
+              ``,
+              `- Keep the current branch.`,
+              `- Push additional commits.`,
+              `- Ensure all checks pass.`
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body
+            });

@@ -1,0 +1,36 @@
+name: Delegate Issue to Copilot Agent
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  delegate:
+    if: github.event.label.name == 'auto-commit'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Post task comment for Copilot agent
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const branch = `auto/issue-${issue.number}-${Date.now()}`; // 衝突防止の一意ブランチ
+            const body = [
+              `Please create a pull request for this issue using GitHub Copilot Agent.`,
+              ``,
+              `- Implement the requirements described in the issue body.`,
+              `- Use a new branch named **${branch}**.`,
+              `- Add unit tests.`,
+              `- Update docs if needed.`,
+              ``,
+              `Context:`,
+              `${issue.title}\n\n${issue.body}`
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body
+            });
