@@ -1,15 +1,37 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+model User {
+  id            Int     @id @default(autoincrement())
+  passcodeHash  String  @map("passcode_hash")
+  entries       Entry[]
+}
+
+model Category {
+  id       Int     @id @default(autoincrement())
+  name     String
+  color    String?
+  order    Int?    // 表示順
+  entries  Entry[]
+}
+
+model Entry {
+  id          Int       @id @default(autoincrement())
+  date        DateTime
+  type        String    // "income" or "expense"
+  amount      Int
+  note        String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  categoryId  Int?
+  user        User      @relation(fields: [userId], references: [id])
+  userId      Int
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 }
