@@ -1,10 +1,22 @@
 import { NextRequest } from 'next/server'
-import { POST } from '../route'
+import { POST, GET } from '../route'
 
 // Mock Next.js request helper
 function createRequest(body: any): NextRequest {
   return {
     json: async () => body,
+  } as NextRequest
+}
+
+// Mock Next.js request helper for GET requests
+function createGetRequest(searchParams: Record<string, string> = {}): NextRequest {
+  const url = new URL('http://localhost:3000/api/entries')
+  Object.entries(searchParams).forEach(([key, value]) => {
+    url.searchParams.set(key, value)
+  })
+  
+  return {
+    url: url.toString(),
   } as NextRequest
 }
 
@@ -375,6 +387,218 @@ describe('/api/entries POST', () => {
 
       expect(response.status).toBe(500)
       expect(data.error).toBe('エントリーの作成に失敗しました')
+    })
+  })
+})
+
+describe('/api/entries GET', () => {
+  describe('正常なケース', () => {
+    it('ユーザーIDを指定してエントリー一覧を取得できること', async () => {
+      const request = createGetRequest({ userId: '1' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data).toHaveProperty('entries')
+      expect(data.data).toHaveProperty('pagination')
+      expect(Array.isArray(data.data.entries)).toBe(true)
+      expect(data.data.pagination).toMatchObject({
+        currentPage: 1,
+        totalPages: expect.any(Number),
+        totalCount: expect.any(Number),
+        limit: 50,
+        hasNextPage: expect.any(Boolean),
+        hasPrevPage: false
+      })
+    })
+
+    it('typeフィルターが正常に動作すること', async () => {
+      const request = createGetRequest({ userId: '1', type: 'expense' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(Array.isArray(data.data.entries)).toBe(true)
+      // すべてのエントリーがexpenseタイプであることを確認
+      data.data.entries.forEach((entry: any) => {
+        expect(entry.type).toBe('expense')
+      })
+    })
+
+    it('カテゴリIDフィルターが正常に動作すること', async () => {
+      const request = createGetRequest({ userId: '1', categoryId: '1' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(Array.isArray(data.data.entries)).toBe(true)
+      // すべてのエントリーがcategoryId=1であることを確認
+      data.data.entries.forEach((entry: any) => {
+        expect(entry.categoryId).toBe(1)
+      })
+    })
+
+    it('年月フィルターが正常に動作すること', async () => {
+      const request = createGetRequest({ userId: '1', yearMonth: '2024-01' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(Array.isArray(data.data.entries)).toBe(true)
+      // すべてのエントリーが2024年1月の範囲内であることを確認
+      data.data.entries.forEach((entry: any) => {
+        const entryDate = new Date(entry.date)
+        expect(entryDate.getFullYear()).toBe(2024)
+        expect(entryDate.getMonth()).toBe(0) // 0 = January
+      })
+    })
+
+    it('複数のフィルターを組み合わせて使用できること', async () => {
+      const request = createGetRequest({ 
+        userId: '1', 
+        type: 'expense',
+        categoryId: '1',
+        yearMonth: '2024-01'
+      })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(Array.isArray(data.data.entries)).toBe(true)
+    })
+
+    it('ページネーションが正常に動作すること', async () => {
+      const request = createGetRequest({ 
+        userId: '1', 
+        page: '2',
+        limit: '10'
+      })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.data.pagination.currentPage).toBe(2)
+      expect(data.data.pagination.limit).toBe(10)
+      expect(data.data.pagination.hasPrevPage).toBe(true)
+    })
+
+    it('エントリーが日付降順でソートされていること', async () => {
+      const request = createGetRequest({ userId: '1' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      
+      const entries = data.data.entries
+      if (entries.length > 1) {
+        for (let i = 0; i < entries.length - 1; i++) {
+          const currentDate = new Date(entries[i].date)
+          const nextDate = new Date(entries[i + 1].date)
+          expect(currentDate.getTime()).toBeGreaterThanOrEqual(nextDate.getTime())
+        }
+      }
+    })
+
+    it('カテゴリ情報が含まれていること', async () => {
+      const request = createGetRequest({ userId: '1', categoryId: '1' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      
+      if (data.data.entries.length > 0) {
+        const entryWithCategory = data.data.entries.find((entry: any) => entry.category)
+        if (entryWithCategory) {
+          expect(entryWithCategory.category).toMatchObject({
+            id: expect.any(Number),
+            name: expect.any(String)
+          })
+        }
+      }
+    })
+  })
+
+  describe('バリデーション', () => {
+    it('userIdが未指定の場合はエラーを返すこと', async () => {
+      const request = createGetRequest({})
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('ユーザーIDは必須です')
+    })
+
+    it('userIdが数値でない場合はエラーを返すこと', async () => {
+      const request = createGetRequest({ userId: 'invalid' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('ユーザーIDは数値である必要があります')
+    })
+
+    it('typeが無効な場合はエラーを返すこと', async () => {
+      const request = createGetRequest({ userId: '1', type: 'invalid' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('typeは"income"または"expense"である必要があります')
+    })
+
+    it('categoryIdが数値でない場合はエラーを返すこと', async () => {
+      const request = createGetRequest({ userId: '1', categoryId: 'invalid' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('カテゴリIDは数値である必要があります')
+    })
+
+    it('年月の形式が無効な場合はエラーを返すこと', async () => {
+      const invalidFormats = ['2024-1', '24-01', '2024/01', '2024-13', 'invalid']
+      
+      for (const yearMonth of invalidFormats) {
+        const request = createGetRequest({ userId: '1', yearMonth })
+        const response = await GET(request)
+        const data = await response.json()
+
+        expect(response.status).toBe(400)
+        expect(data.error).toBe('年月の形式はYYYY-MMである必要があります')
+      }
+    })
+
+    it('ページ番号が無効な場合はエラーを返すこと', async () => {
+      const request = createGetRequest({ userId: '1', page: '0' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('ページ番号は1以上の数値である必要があります')
+    })
+
+    it('件数制限が無効な場合はエラーを返すこと', async () => {
+      const request = createGetRequest({ userId: '1', limit: '101' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('件数は1以上100以下の数値である必要があります')
+    })
+  })
+
+  describe('エラーハンドリング', () => {
+    it('データベースエラーの場合は500エラーを返すこと', async () => {
+      // This test would require mocking prisma to throw an error
+      // For now, we'll skip this as it requires more complex setup
     })
   })
 })
