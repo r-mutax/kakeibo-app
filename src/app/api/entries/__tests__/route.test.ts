@@ -1,8 +1,26 @@
 import { NextRequest } from 'next/server'
 import { POST, GET } from '../route'
 
+interface TestEntry {
+  id: number
+  date: string
+  type: string
+  amount: number
+  note?: string | null
+  categoryId?: number | null
+  userId: number
+  createdAt: string
+  updatedAt: string
+  category?: {
+    id: number
+    name: string
+    color?: string | null
+    order?: number | null
+  } | null
+}
+
 // Mock Next.js request helper
-function createRequest(body: any): NextRequest {
+function createRequest(body: unknown): NextRequest {
   return {
     json: async () => body,
   } as NextRequest
@@ -422,7 +440,7 @@ describe('/api/entries GET', () => {
       expect(data.success).toBe(true)
       expect(Array.isArray(data.data.entries)).toBe(true)
       // すべてのエントリーがexpenseタイプであることを確認
-      data.data.entries.forEach((entry: any) => {
+      data.data.entries.forEach((entry: TestEntry) => {
         expect(entry.type).toBe('expense')
       })
     })
@@ -436,7 +454,7 @@ describe('/api/entries GET', () => {
       expect(data.success).toBe(true)
       expect(Array.isArray(data.data.entries)).toBe(true)
       // すべてのエントリーがcategoryId=1であることを確認
-      data.data.entries.forEach((entry: any) => {
+      data.data.entries.forEach((entry: TestEntry) => {
         expect(entry.categoryId).toBe(1)
       })
     })
@@ -450,7 +468,7 @@ describe('/api/entries GET', () => {
       expect(data.success).toBe(true)
       expect(Array.isArray(data.data.entries)).toBe(true)
       // すべてのエントリーが2024年1月の範囲内であることを確認
-      data.data.entries.forEach((entry: any) => {
+      data.data.entries.forEach((entry: TestEntry) => {
         const entryDate = new Date(entry.date)
         expect(entryDate.getFullYear()).toBe(2024)
         expect(entryDate.getMonth()).toBe(0) // 0 = January
@@ -515,7 +533,7 @@ describe('/api/entries GET', () => {
       expect(data.success).toBe(true)
       
       if (data.data.entries.length > 0) {
-        const entryWithCategory = data.data.entries.find((entry: any) => entry.category)
+        const entryWithCategory = data.data.entries.find((entry: TestEntry) => entry.category)
         if (entryWithCategory) {
           expect(entryWithCategory.category).toMatchObject({
             id: expect.any(Number),

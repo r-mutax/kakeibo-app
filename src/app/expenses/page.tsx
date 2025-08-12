@@ -2,7 +2,7 @@
 
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/components/AuthProvider'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface Category {
   id: number
@@ -58,7 +58,7 @@ export default function ExpensesPage() {
     hasPrevPage: false
   })
 
-  const fetchEntries = async () => {
+  const fetchEntries = useCallback(async () => {
     if (!user?.id) return
 
     setLoading(true)
@@ -93,11 +93,11 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id, pagination.currentPage, pagination.limit, filters])
 
   useEffect(() => {
     fetchEntries()
-  }, [user?.id, pagination.currentPage, filters])
+  }, [fetchEntries])
 
   const handleLogout = () => {
     logout()
