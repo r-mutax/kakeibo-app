@@ -10,6 +10,16 @@ interface CreateEntryRequest {
   userId: number
 }
 
+interface EntryWhereInput {
+  userId?: number
+  type?: string
+  categoryId?: number | null
+  date?: {
+    gte?: Date
+    lte?: Date
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -73,7 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause
-    const where: any = {
+    const where: EntryWhereInput = {
       userId: userIdNum
     }
 

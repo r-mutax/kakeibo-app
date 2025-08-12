@@ -1,6 +1,20 @@
 import { NextRequest } from 'next/server'
 import { GET } from '../route'
 
+interface CategorySummary {
+  categoryId: number | null
+  categoryName: string
+  totalAmount: number
+  entryCount: number
+}
+
+interface DailySummary {
+  date: string
+  income: number
+  expense: number
+  balance: number
+}
+
 // Mock Next.js request helper for GET requests
 function createGetRequest(searchParams: Record<string, string> = {}): NextRequest {
   const url = new URL('http://localhost:3000/api/summary')
@@ -65,7 +79,7 @@ describe('/api/summary GET', () => {
       expect(Array.isArray(data.data.byCategory)).toBe(true)
       
       // カテゴリ別データは支出のみが集計される
-      data.data.byCategory.forEach((category: any) => {
+      data.data.byCategory.forEach((category: CategorySummary) => {
         expect(category).toMatchObject({
           categoryId: expect.anything(), // number or null
           categoryName: expect.any(String),
@@ -88,7 +102,7 @@ describe('/api/summary GET', () => {
       expect(response.status).toBe(200)
       
       // Check if there's an uncategorized entry
-      const uncategorizedEntry = data.data.byCategory.find((cat: any) => cat.categoryId === null)
+      const uncategorizedEntry = data.data.byCategory.find((cat: CategorySummary) => cat.categoryId === null)
       if (uncategorizedEntry) {
         expect(uncategorizedEntry.categoryName).toBe('未分類')
       }
@@ -123,7 +137,7 @@ describe('/api/summary GET', () => {
       expect(response.status).toBe(200)
       expect(Array.isArray(data.data.daily)).toBe(true)
       
-      data.data.daily.forEach((day: any) => {
+      data.data.daily.forEach((day: DailySummary) => {
         expect(day).toMatchObject({
           date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format
           income: expect.any(Number),
@@ -164,7 +178,7 @@ describe('/api/summary GET', () => {
 
       expect(response.status).toBe(200)
       
-      data.data.daily.forEach((day: any) => {
+      data.data.daily.forEach((day: DailySummary) => {
         expect(day.date).toMatch(/^2024-01-\d{2}$/)
       })
     })
