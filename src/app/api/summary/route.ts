@@ -74,7 +74,8 @@ export async function GET(request: NextRequest) {
 
     // Calculate date range for the month
     const startDate = new Date(parseInt(year), monthNum - 1, 1)
-    const endDate = new Date(parseInt(year), monthNum, 0, 23, 59, 59, 999)
+    // Set endDate to the last millisecond of the target month by getting the first millisecond of the next month and subtracting one
+    const endDate = new Date(new Date(parseInt(year), monthNum, 1).getTime() - 1)
 
     // Get all entries for the specified month and user
     const entries = await prisma.entry.findMany({
