@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
     }>()
 
     entries.forEach(entry => {
-      const dateKey = entry.date.toISOString().split('T')[0] // YYYY-MM-DD format
+      const dateKey = entry.date.toLocaleDateString('sv-SE') // YYYY-MM-DD format
       
       if (dailyMap.has(dateKey)) {
         const existing = dailyMap.get(dateKey)!
