@@ -5,11 +5,13 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
+    "start:standalone": "node .next/standalone/server.js",
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "db:migrate": "prisma migrate deploy",
     "setup": "npx tsx scripts/setup-user.ts",
     "test": "jest",
     "test:watch": "jest --watch"
